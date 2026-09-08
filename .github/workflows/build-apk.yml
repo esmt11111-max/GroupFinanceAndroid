@@ -3,9 +3,7 @@ name: Build GroupFinance APK
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
-      - master
+    branches: [ main, master ]
 
 permissions:
   contents: read
@@ -15,43 +13,47 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: تحميل المشروع
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: تجهيز Java
+      - name: Extract V6 project
+        run: |
+          unzip -o GroupFinanceAndroid_V6_Ready.zip -d extracted
+          echo "Contents:"
+          find extracted -maxdepth 3 -type f | head -100
+
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: تجهيز Android SDK
+      - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: تثبيت Android SDK
+      - name: Install Android SDK packages
         run: |
           yes | sdkmanager --licenses || true
           sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
-      - name: تفعيل AndroidX
-        run: |
-          echo "android.useAndroidX=true" >> gradle.properties
-          echo "android.enableJetifier=true" >> gradle.properties
-
-      - name: إعداد Gradle
+      - name: Set up Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
-      - name: بناء APK
-        run: gradle :app:assembleDebug --stacktrace --no-daemon
+      - name: Build APK
+        run: |
+          cd extracted/GroupFinanceAndroid
+          gradle :app:assembleDebug --stacktrace --no-daemon
 
-      - name: التحقق من وجود APK
-        run: test -f app/build/outputs/apk/debug/app-debug.apk
+      - name: Verify APK exists
+        run: |
+          test -f extracted/GroupFinanceAndroid/app/build/outputs/apk/debug/app-debug.apk
 
-      - name: حفظ APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: GroupFinance-V6-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: extracted/GroupFinanceAndroid/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
